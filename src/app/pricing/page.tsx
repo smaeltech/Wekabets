@@ -1,14 +1,43 @@
 "use client";
 
 import { PaystackButton } from "react-paystack";
+import { useCurrentUser } from "@/hooks/use-current-user";
+
+const MONTHLY_AMOUNT = 10000;
 
 export default function PricingPage() {
+  const { authUid, profile } = useCurrentUser();
+
   const paystackConfig = {
     reference: `wekabets-${Date.now()}`,
-    email: "user@example.com",
-    amount: 10000,
+    email: profile?.email ?? "user@example.com",
+    amount: MONTHLY_AMOUNT,
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ?? ""
   };
+
+  async function handlePaymentSuccess(response: { reference: string }) {
+    if (!authUid) {
+      alert("Please login before upgrading.");
+      return;
+    }
+
+    const verifyRes = await fetch("/api/paystack/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: authUid,
+        reference: response.reference,
+        amount: MONTHLY_AMOUNT
+      })
+    });
+
+    if (!verifyRes.ok) {
+      alert("Payment verification failed. Contact support with your reference.");
+      return;
+    }
+
+    alert("Payment successful. Your premium access is now active.");
+  }
 
   return (
     <section className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -23,7 +52,7 @@ export default function PricingPage() {
           {...paystackConfig}
           text="Pay with Paystack"
           className="w-full rounded-md bg-brandNavy px-4 py-3 font-semibold text-white"
-          onSuccess={() => alert("Payment successful. Your account will be upgraded shortly.")}
+          onSuccess={handlePaymentSuccess}
           onClose={() => alert("Payment cancelled")}
         />
       </div>

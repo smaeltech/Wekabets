@@ -24,6 +24,15 @@ export default function AuthPage() {
     }
   }
 
+  async function handleGoogleLogin() {
+    try {
+      await loginWithGoogle();
+      setFeedback("Google login successful.");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Google login failed");
+    }
+  }
+
   return (
     <section className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <h1 className="mb-4 text-2xl font-bold text-brandNavy">{isRegister ? "Create Account" : "Login"}</h1>
@@ -34,7 +43,7 @@ export default function AuthPage() {
           {isRegister ? "Register" : "Login"}
         </button>
       </form>
-      <button onClick={() => loginWithGoogle()} className="mt-3 w-full rounded-md border border-slate-300 px-4 py-2 text-sm font-medium" type="button">
+      <button onClick={handleGoogleLogin} className="mt-3 w-full rounded-md border border-slate-300 px-4 py-2 text-sm font-medium" type="button">
         Continue with Google
       </button>
       <button onClick={() => setIsRegister((prev) => !prev)} className="mt-4 text-sm text-brandGreen" type="button">

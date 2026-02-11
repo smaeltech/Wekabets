@@ -3,12 +3,14 @@
 import { FormEvent, useMemo, useState } from "react";
 import { push, ref, update } from "firebase/database";
 import { db } from "@/lib/firebaseConfig";
-import { mockMatches } from "@/data/sample-data";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useMatches } from "@/hooks/use-matches";
 
 const ADMIN_UIDS = (process.env.NEXT_PUBLIC_ADMIN_UIDS ?? "").split(",").filter(Boolean);
 
 export default function AdminPage() {
-  const [adminUid, setAdminUid] = useState("");
+  const { authUid, isLoading: isUserLoading } = useCurrentUser();
+  const { matches, isLoading: isMatchesLoading } = useMatches();
   const [form, setForm] = useState({
     homeTeam: "",
     awayTeam: "",
@@ -19,11 +21,11 @@ export default function AdminPage() {
     isPremium: true
   });
 
-  const isAdmin = useMemo(() => ADMIN_UIDS.includes(adminUid), [adminUid]);
+  const isAdmin = useMemo(() => Boolean(authUid && ADMIN_UIDS.includes(authUid)), [authUid]);
 
   async function addMatch(event: FormEvent) {
     event.preventDefault();
-    if (!isAdmin) return;
+    if (!isAdmin || !form.kickOffTime) return;
 
     const payload = {
       ...form,
@@ -39,14 +41,16 @@ export default function AdminPage() {
     await update(ref(db, `matches/${matchId}`), { status });
   }
 
+  if (isUserLoading || isMatchesLoading) {
+    return <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">Checking admin access...</p>;
+  }
+
+  if (!authUid) {
+    return <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">Please login to access admin tools.</p>;
+  }
+
   if (!isAdmin) {
-    return (
-      <section className="mx-auto max-w-xl rounded-xl border border-slate-200 p-6">
-        <h1 className="mb-2 text-2xl font-bold text-brandNavy">Admin Access</h1>
-        <p className="mb-4 text-sm text-slate-600">Enter your UID to continue.</p>
-        <input className="w-full rounded-md border border-slate-300 px-3 py-2" value={adminUid} onChange={(event) => setAdminUid(event.target.value)} placeholder="Firebase UID" />
-      </section>
-    );
+    return <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">Access denied. Your account is not configured as an admin.</p>;
   }
 
   return (
@@ -68,7 +72,7 @@ export default function AdminPage() {
       <div className="rounded-xl border border-slate-200 p-5">
         <h2 className="mb-3 text-xl font-semibold text-brandNavy">Match Management</h2>
         <ul className="space-y-3">
-          {mockMatches.map((match) => (
+          {matches.map((match) => (
             <li key={match.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-100 p-3">
               <span className="text-sm font-medium">{match.homeTeam} vs {match.awayTeam}</span>
               <div className="space-x-2">

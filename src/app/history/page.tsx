@@ -1,20 +1,19 @@
-import { MatchesTable } from "@/components/matches-table";
-import { mockMatches } from "@/data/sample-data";
+"use client";
 
-function groupByDate() {
-  return mockMatches.reduce<Record<string, typeof mockMatches>>((acc, match) => {
-    acc[match.date] = [...(acc[match.date] || []), match];
-    return acc;
-  }, {});
-}
+import { MatchesTable } from "@/components/matches-table";
+import { useMatches } from "@/hooks/use-matches";
 
 export default function HistoryPage() {
-  const grouped = groupByDate();
+  const { groupedByDate, isLoading } = useMatches();
+
+  if (isLoading) {
+    return <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">Loading history...</p>;
+  }
 
   return (
     <section>
       <h1 className="mb-4 text-2xl font-bold text-brandNavy">Winning History</h1>
-      {Object.entries(grouped)
+      {Object.entries(groupedByDate)
         .sort((a, b) => b[0].localeCompare(a[0]))
         .map(([date, matches]) => (
           <div key={date}>

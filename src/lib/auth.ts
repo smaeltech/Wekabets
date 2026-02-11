@@ -1,20 +1,30 @@
 "use client";
 
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
-import { ref, set } from "firebase/database";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, User } from "firebase/auth";
+import { get, ref, set } from "firebase/database";
 import { auth, db, googleProvider } from "@/lib/firebaseConfig";
 
-export async function registerWithEmail(email: string, password: string) {
-  const cred = await createUserWithEmailAndPassword(auth, email, password);
-  const now = Date.now();
-
-  await set(ref(db, `users/${cred.user.uid}`), {
+function defaultUserProfile(email: string | null) {
+  return {
     email,
     isPremium: false,
     subscriptionExpiry: 0,
-    createdAt: now
-  });
+    createdAt: Date.now()
+  };
+}
 
+async function ensureUserProfile(user: User) {
+  const userRef = ref(db, `users/${user.uid}`);
+  const snapshot = await get(userRef);
+
+  if (!snapshot.exists()) {
+    await set(userRef, defaultUserProfile(user.email));
+  }
+}
+
+export async function registerWithEmail(email: string, password: string) {
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  await set(ref(db, `users/${cred.user.uid}`), defaultUserProfile(email));
   return cred.user;
 }
 
@@ -24,14 +34,6 @@ export async function loginWithEmail(email: string, password: string) {
 
 export async function loginWithGoogle() {
   const cred = await signInWithPopup(auth, googleProvider);
-  const userRef = ref(db, `users/${cred.user.uid}`);
-
-  await set(userRef, {
-    email: cred.user.email,
-    isPremium: false,
-    subscriptionExpiry: 0,
-    createdAt: Date.now()
-  });
-
+  await ensureUserProfile(cred.user);
   return cred.user;
 }
